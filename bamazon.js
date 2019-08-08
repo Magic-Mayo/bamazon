@@ -49,7 +49,7 @@ userInput = () => {
                 orderTotal.push((parseFloat(Math.round(data[parseInt(answer.product)-1].price*100)/100))*parseInt(answer.quantity));
                 cartItems.push(`${answer.quantity} ${data[parseInt(answer.product)-1].product_name}`);
 
-                connection.query('update products set ? where ?', 
+                connection.query('update products set ? where ?',
                 [{stock_quantity: data[parseInt(answer.product)].stock_quantity-parseInt(answer.quantity)},
                 {product_name: data[parseInt(answer.product)].product_name}], (err)=>{
                     
@@ -66,17 +66,20 @@ userInput = () => {
                         if (answer.confirm){
                             cart();
                         } else {
-                            products.pop();
-                            cart.pop();
-                            orderTotal.pop();
-                            cart();
+                            if (cartItems.length>0){
+                                products.pop();
+                                cartItems.pop();
+                                orderTotal.pop();
+                                cart();
+                            } else {
+                                userInput();
+                            }
                         }
                     })
-                }); connection.end()
-
+                });
             } else {
-                console.log(data[parseInt(answer.product-1)].stock_quantity)
-                console.log(parseInt(answer.quantity)-data[parseInt(answer.product-1)].stock_quantity)                    
+                // console.log(data[parseInt(answer.product-1)].stock_quantity)
+                // console.log(parseInt(answer.quantity)-data[parseInt(answer.product-1)].stock_quantity)
                 inq.prompt([
                     {
                         type: 'confirm',
@@ -116,9 +119,11 @@ cart = () => {
             userInput();
         } else {
             console.log(`Order Placed!  Your total is: $${orderTotal.reduce(total)}`);
-            connection.end();
         }
     })
+    
+    connection.end()
+
 }
 
 backOrder = (orderQuan, product) => {

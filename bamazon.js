@@ -1,6 +1,8 @@
 const mysql = require('mysql');
 const inq = require('inquirer');
 let orderTotal = [];
+let products = [];
+let cart = [];
 
 const connection = mysql.createConnection({
     host: "localhost",
@@ -19,46 +21,85 @@ connection.query('select * from products', (err,data)=>{
 userInput = () => {
     connection.query('select * from products', (err, data)=>{
         if (err) throw err;
-        inq.prompt(
+        choices = ()=>{
+            for (let i=0; i<data.length; i++){
+                products.push(`${data[i].item_id}) ${data[i].product_name}: $${data[i].price}`)
+            }
+        }
+
+        if (products.length===0){
+            choices();
+        }
+
+        console.log(products.join('\n'));
+
+        inq.prompt([
             {
-                type: 'rawlist',
+                type: 'number',
                 name: 'product',
-                choices: ()=>{
-                    const products = [];
-                    for (let i=0; i<data.length; i++){
-                        products.push(`${data[i].product_name}: $${data[i].price}`)
-                    } return products;
-                },
-                message: 'Which product would you like to purchase?',
+                message: 'Please enter the ID number of the product would you like to purchase: ',
             },{
                 type: 'number',
                 message: 'Enter the quantity you wish to order: ',
                 name: 'quantity'
-            }).then(answer => {
-            orderTotal.push()
-            orderProduct(answer.product, answer.quantity);
-            inq.prompt(
+            }
+        ]).then(answer => {
+            // console.log(answer.product)
+            orderTotal.push((parseFloat(Math.round(data[parseInt(answer.product)-1].price*100)/100))*parseInt(answer.quantity));
+            cart.push(`${answer.quantity} ${data[parseInt(answer.product)-1].product_name}`)
+            // console.log(orderTotal)
+            // orderProduct(answer.product, answer.quantity);
+            inq.prompt([
                 {
                     type: 'confirm',
-                    message: 'Would you like to order anything else?',
-                    name: 'ordermore',
-                    default: false
-                }).then(answer=>{
-                if (answer.ordermore){
-                    userInput()
+                    message: `You have ordered ${answer.quantity} ${data[parseInt(answer.product)-1].product_name}.  Is this correct?`,
+                    name: 'confirm',
+                    default: true
+                }
+            ]).then(answer=>{
+                if (answer.confirm){
+                    inq.prompt(
+                        {
+                            type: 'confirm',
+                            message: 'Would you like to order anything else?',
+                            name: 'ordermore',
+                            default: false
+                        }).then(answer=>{
+                        if (answer.ordermore){
+                            userInput();
+                        } else {
+                            console.log(`Order Placed!  Your total is: $${orderTotal.reduce(total)}`);
+                            connection.end();
+                        }
+                    })
                 } else {
-                    console.log(`Order Placed!  Your total is: $${total(orderTotal)}`);
-                    connection.end();
+                    products.pop();
+                    cart.pop();
+                    orderTotal.pop();
+                    inq.prompt([
+                        {
+                            type: 'list',
+                            message: `You now have ${cart} in your cart. What you like to do?`,
+                            choices: ['Order more', 'Checkout'],
+                            name: 'cart'
+                        }
+                    ]).then(answer=>{
+                        if (answer.cart === 'Order more'){
+                            userInput();
+                        } else {
+                            console.log(`Order Placed!  Your total is: $${orderTotal.reduce(total)}`);
+                            connection.end();
+                        }
+                    })
+
                 }
             })
         })
     })
 }
 
-total = (input) => {
-    return input.reduce((a,b)=>a+b, 0)
+total = (total, num) => {
+    return parseFloat(total) + parseFloat(num);
 }
 
-orderProduct = (product, quantity) => {
-
-}
+// Have a 'backorder' function if customer wants to purchase more than what's in stock
